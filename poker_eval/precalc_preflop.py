@@ -1,5 +1,5 @@
 
-from poker import Evaluator, Card, suits, values
+from poker_eval import Evaluator, Card, suits, values
 import numpy as np
 
 preflop_table = np.zeros((52, 52), dtype=float)

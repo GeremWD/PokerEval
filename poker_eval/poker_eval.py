@@ -5,6 +5,7 @@ from itertools import combinations
 from numba import njit
 import numpy as np
 from copy import deepcopy
+import os
 
 
 suits = ['s','d','h','c']
@@ -29,6 +30,10 @@ class Card:
         return self.idx//4
 
 
+def str_to_cards(s: str):
+    return [Card.from_str(s[i:i+2]) for i in range(0, len(s), 2)]
+
+
 @njit
 def _eval(rank_table: np.ndarray, ref: int, cards: tuple[int], premature_rank: bool=False):
     p = ref
@@ -40,7 +45,8 @@ def _eval(rank_table: np.ndarray, ref: int, cards: tuple[int], premature_rank: b
 
 class Evaluator:
     def __init__(self, preflop_table=True):
-        rank_table_file = open("rank_table.bin", "r")
+        rank_table_filename = os.path.join(os.path.dirname(__file__), "rank_table.bin")
+        rank_table_file = open(rank_table_filename, "r")
         self.rank_table = np.fromfile(rank_table_file, dtype=np.int32)
         self.rank_to_str_dict = {
             1: 'HIGH_CARD',
@@ -55,7 +61,8 @@ class Evaluator:
         }
         self.deck = [Card(i) for i in range(52)]
         if preflop_table:
-            self.preflop_table = np.load('preflop_table.npy')
+            preflop_table_filename = os.path.join(os.path.dirname(__file__), "preflop_table.npy")
+            self.preflop_table = np.load(preflop_table_filename)
         else:
             self.preflop_table = None
     
@@ -157,3 +164,13 @@ class Evaluator:
         if len(board) >= 4:
             return self.check_odds_exact(pocket, board)
         return self.check_odds_monte_carlo(pocket, board, n_samples)
+
+    def full_evaluation(self, pocket_str, board_str, n_samples=100_000):
+        pocket = str_to_cards(pocket_str)
+        board = str_to_cards(board_str)
+        if board == "":
+            return None, None, self.check_odds(pocket, [])
+        rank = self.eval(pocket + board)
+        checker = self.get_checker(pocket, board)
+        odds = self.check_odds(pocket, board, n_samples)
+        return rank, checker, odds
