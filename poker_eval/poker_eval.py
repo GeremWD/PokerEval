@@ -1,5 +1,5 @@
 
-from typing import Iterable
+from typing import Iterable, Tuple, List
 from random import sample
 from itertools import combinations
 from numba import njit
@@ -35,7 +35,7 @@ def str_to_cards(s: str):
 
 
 @njit
-def _eval(rank_table: np.ndarray, ref: int, cards: tuple[int], premature_rank: bool=False):
+def _eval(rank_table: np.ndarray, ref: int, cards: Tuple[int], premature_rank: bool=False):
     p = ref
     for card in cards:
         p = rank_table[p + card + 1]
@@ -85,7 +85,7 @@ class Evaluator:
                 return True
         return False
 
-    def get_checker(self, pocket: list[Card], board: list[Card]):
+    def get_checker(self, pocket: List[Card], board: List[Card]):
         cards = pocket + board
         pocket_contribution = 0
         board_contribution = 0
@@ -102,7 +102,7 @@ class Evaluator:
     def rank_to_str(self, rank: int):
         return self.rank_to_str_dict[rank >> 12]
 
-    def check_odds_exact(self, pocket: list[Card], board: list[Card]):
+    def check_odds_exact(self, pocket: List[Card], board: List[Card]):
         unseen_deck = tuple(card.idx for card in self.deck if card not in pocket + board)
         pocket = tuple(card.idx for card in pocket)
         board = tuple(card.idx for card in board)
@@ -136,7 +136,7 @@ class Evaluator:
                 total += 1
         return wins/total
 
-    def check_odds_monte_carlo(self, pocket: list[Card], board: list[Card], n_samples: int):
+    def check_odds_monte_carlo(self, pocket: List[Card], board: List[Card], n_samples: int):
         unseen_deck = tuple(card.idx for card in self.deck if card not in pocket + board)
         pocket = tuple(card.idx for card in pocket)
         board = tuple(card.idx for card in board)
@@ -155,10 +155,10 @@ class Evaluator:
             total += 1
         return wins/total
 
-    def check_odds_preflop(self, pocket: list[Card]):
+    def check_odds_preflop(self, pocket: List[Card]):
         return self.preflop_table[pocket[0].idx, pocket[1].idx]
 
-    def check_odds(self, pocket: list[Card], board: list[Card], n_samples: int=10000):
+    def check_odds(self, pocket: List[Card], board: List[Card], n_samples: int=10000):
         if len(board) == 0 and self.preflop_table is not None:
             return self.check_odds_preflop(pocket)
         if len(board) >= 4:
