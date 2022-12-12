@@ -184,6 +184,26 @@ def print_result_after_flop(rank, checker, odds):
     print(f"Rank : {rank_str} ({rank}),  Checker : {checker:.2f},  Odds : {odds*100:.2f} %\n")
 
 
+def interactive_evaluation(pocket=None, flop=None, turn=None, river=None):
+    if pocket is None:
+        pocket = input()
+    _, _, odds = evaluator.full_evaluation(pocket, "")
+    print("Preflop : ")
+    print_result_preflop(odds)
+    if flop is None:
+        flop = input()
+    print("Flop")
+    print_result_after_flop(*evaluator.full_evaluation(pocket, flop, n_samples=20000))
+    if turn is None:
+        turn = input()
+    print("Turn")
+    print_result_after_flop(*evaluator.full_evaluation(pocket, flop + turn))
+    if river is None:
+        river = input()
+    print("River")
+    print_result_after_flop(*evaluator.full_evaluation(pocket, flop + turn + river))
+
+
 if __name__ == '__main__':
     evaluator = Evaluator()
 
@@ -191,13 +211,13 @@ if __name__ == '__main__':
     flop = '4cth2d'
     turn = 'as'
     river = 'td'
+    
+    print("")
+    interactive_evaluation(pocket, flop, turn, river)
 
-    _, _, odds = evaluator.full_evaluation(pocket, "")
-    print("Preflop : ")
-    print_result_preflop(odds)
-    print("Flop")
-    print_result_after_flop(*evaluator.full_evaluation(pocket, flop, n_samples=20000))
-    print("Turn")
-    print_result_after_flop(*evaluator.full_evaluation(pocket, flop + turn))
-    print("River")
-    print_result_after_flop(*evaluator.full_evaluation(pocket, flop + turn + river))
+    try:
+        while True:
+            interactive_evaluation()
+    except KeyboardInterrupt:
+        pass
+
