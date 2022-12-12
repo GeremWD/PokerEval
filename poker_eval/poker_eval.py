@@ -177,52 +177,46 @@ class Evaluator:
         return rank, checker, odds
 
 
-def print_result_preflop(odds):
+def run_preflop(evaluator, pocket):
+    _, _, odds = evaluator.full_evaluation(pocket, "")
     print(f"Odds : {odds*100:.2f} %\n")
 
-def print_result_after_flop(rank, checker, odds):
+
+def run_after_flop(evaluator, cards, n_samples):
+    rank, checker, odds = evaluator.full_evaluation(pocket, cards, n_samples)
     rank_str = evaluator.rank_to_str(rank)
     print(f"Rank : {rank_str} ({rank}),  Checker : {checker:.2f},  Odds : {odds*100:.2f} %\n")
 
 
-def interactive_evaluation(pocket=None, flop='', turn='', river=''):
-    if pocket is None:
+def run(pocket='', flop='', turn='', river='', n_samples=20000):
+    evaluator = Evaluator()
+
+    print("")
+    if pocket == '':
         pocket = input()
-    _, _, odds = evaluator.full_evaluation(pocket, "")
+    
     print("Preflop : ")
-    print_result_preflop(odds)
+    run_preflop(evaluator, pocket)
+
     if flop == '':
-        flop = input()
+        return
     print("Flop")
-    print_result_after_flop(*evaluator.full_evaluation(pocket, flop, n_samples=20000))
+    run_after_flop(evaluator, flop, n_samples)
+
     if turn == '':
-        turn = input()
+        return
     print("Turn")
-    print_result_after_flop(*evaluator.full_evaluation(pocket, flop + turn))
+    run_after_flop(evaluator, flop + turn, n_samples)
+
     if river == '':
-        river = input()
+        return
     print("River")
-    print_result_after_flop(*evaluator.full_evaluation(pocket, flop + turn + river))
+    run_after_flop(evaluator, flop + turn + river, n_samples)
 
 
 if __name__ == '__main__':
-    evaluator = Evaluator()
-    parser = argparse.ArgumentParser(prog = 'PokerEval')
-    parser.add_argument('-i', '--interactive', action='store_true')
-    args = parser.parse_args()
-
     pocket = 'ad8h'
     flop = '4cth2d'
     turn = 'as'
     river = 'td'
-    
-    if not args.interactive:
-        print("")
-        interactive_evaluation(pocket, flop, turn, river)
-    else:
-        try:
-            while True:
-                interactive_evaluation()
-        except KeyboardInterrupt:
-            pass
-
+    run(pocket, flop, turn, river)
