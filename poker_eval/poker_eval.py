@@ -6,6 +6,7 @@ from numba import njit
 import numpy as np
 from copy import deepcopy
 import os
+import argparse
 
 
 suits = ['s','d','h','c']
@@ -206,18 +207,22 @@ def interactive_evaluation(pocket=None, flop='', turn='', river=''):
 
 if __name__ == '__main__':
     evaluator = Evaluator()
+    parser = argparse.ArgumentParser(prog = 'PokerEval')
+    parser.add_argument('-i', '--interactive', action='store_true')
+    args = parser.parse_args()
 
     pocket = 'ad8h'
     flop = '4cth2d'
     turn = 'as'
     river = 'td'
     
-    print("")
-    interactive_evaluation(pocket, flop, turn, river)
-
-    try:
-        while True:
-            interactive_evaluation()
-    except KeyboardInterrupt:
-        pass
+    if not args.interactive:
+        print("")
+        interactive_evaluation(pocket, flop, turn, river)
+    else:
+        try:
+            while True:
+                interactive_evaluation()
+        except KeyboardInterrupt:
+            pass
 
