@@ -12,11 +12,11 @@ for value_idx_1 in range(13):
         print(value_idx_1, value_idx_2)
         value1 = values[value_idx_1]
         value2 = values[value_idx_2]
-        diff_color_cards = [Card.from_str(value1 + suits[0]), Card.from_str(value1 + suits[1])]
+        diff_color_cards = [Card.from_str(value1 + suits[0]), Card.from_str(value2 + suits[1])]
         diff_color_odds = evaluator.check_odds(diff_color_cards, [], n_samples)
 
         if value1 != value2:
-            same_color_cards = [Card.from_str(value1 + suits[0]), Card.from_str(value1 + suits[0])]
+            same_color_cards = [Card.from_str(value1 + suits[0]), Card.from_str(value2 + suits[0])]
             same_color_odds = evaluator.check_odds(same_color_cards, [], n_samples)
 
         for suit1 in suits:

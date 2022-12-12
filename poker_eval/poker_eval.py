@@ -168,7 +168,7 @@ class Evaluator:
     def full_evaluation(self, pocket_str, board_str, n_samples=100_000):
         pocket = str_to_cards(pocket_str)
         board = str_to_cards(board_str)
-        if board == "":
+        if board == []:
             return None, None, self.check_odds(pocket, [])
         rank = self.eval(pocket + board)
         checker = self.get_checker(pocket, board)
