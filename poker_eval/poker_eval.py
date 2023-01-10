@@ -71,7 +71,7 @@ class Evaluator:
         cards = tuple(card.idx for card in cards)
         return _eval(self.rank_table, 53, cards, premature_rank=(len(cards) < 7))
 
-    def _does_card_contribute(self, cards, idx):
+    def _does_card_contribute(self, cards, idx, subrank=False):
         true_rank = self.eval(cards)
         if true_rank >> 12 == 1:
             return cards[idx].value() == max(card.value() for card in cards)
@@ -82,22 +82,22 @@ class Evaluator:
                 continue
             fake_cards[idx] = card
             fake_rank = self.eval(fake_cards)
-            if fake_rank >> 12 < true_rank >> 12:
+            if ((not subrank) and (fake_rank >> 12 < true_rank >> 12)) or (subrank and (fake_rank < true_rank)):
                 return True
         return False
 
-    def get_checker(self, pocket: List[Card], board: List[Card]):
+    def get_checker(self, pocket: List[Card], board: List[Card], subrank=False):
         cards = pocket + board
         pocket_contribution = 0
         board_contribution = 0
-        for idx in range(len(cards)):
-            if self._does_card_contribute(cards, idx):
+        for idx in range(len(cards)): 
+            if self._does_card_contribute(cards, idx, subrank):
                 if idx < 2:
                     pocket_contribution += 1
                 else:
                     board_contribution += 1
         if board_contribution + pocket_contribution == 0:
-            return 0.
+            return self.get_checker(pocket, board, True)
         return board_contribution / (board_contribution + pocket_contribution)
 
     def rank_to_str(self, rank: int):
@@ -218,5 +218,5 @@ if __name__ == '__main__':
     pocket = 'ad8h'
     flop = '4cth2d'
     turn = 'as'
-    river = 'td'
+    river = ''
     run(pocket, flop, turn, river)
