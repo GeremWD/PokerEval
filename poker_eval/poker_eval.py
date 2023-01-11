@@ -71,34 +71,28 @@ class Evaluator:
         cards = tuple(card.idx for card in cards)
         return _eval(self.rank_table, 53, cards, premature_rank=(len(cards) < 7))
 
-    def _does_card_contribute(self, cards, idx, subrank=False):
+    def _get_contribution(self, cards, idx):
         true_rank = self.eval(cards)
-        if true_rank >> 12 == 1:
-            return cards[idx].value() == max(card.value() for card in cards)
-
         fake_cards = deepcopy(cards)
+        max_contrib = 0
         for card in self.deck:
             if card in cards:
                 continue
             fake_cards[idx] = card
             fake_rank = self.eval(fake_cards)
-            if ((not subrank) and (fake_rank >> 12 < true_rank >> 12)) or (subrank and (fake_rank < true_rank)):
-                return True
-        return False
+            contribution = true_rank - fake_rank
+            if contribution > max_contrib:
+                max_contrib = contribution
+        return max_contrib
 
     def get_checker(self, pocket: List[Card], board: List[Card], subrank=False):
         cards = pocket + board
-        pocket_contribution = 0
-        board_contribution = 0
-        for idx in range(len(cards)): 
-            if self._does_card_contribute(cards, idx, subrank):
-                if idx < 2:
-                    pocket_contribution += 1
-                else:
-                    board_contribution += 1
-        if board_contribution + pocket_contribution == 0:
-            return self.get_checker(pocket, board, True)
-        return board_contribution / (board_contribution + pocket_contribution)
+        hand_size = [-1, 1, 2, 4, 3, 5, 5, 5, 4, 5][self.eval(cards) >> 12]
+        contributions = [self._get_contribution(cards, idx) for idx in range(len(cards))]
+        sorted_cards = sorted(list(range(len(cards))), reverse=True, key=lambda idx: (contributions[idx], idx))
+        hand_cards = sorted_cards[:hand_size]
+        board_contribution = sum(1 for card in hand_cards if card >= 2)
+        return board_contribution / hand_size
 
     def rank_to_str(self, rank: int):
         return self.rank_to_str_dict[rank >> 12]
@@ -116,6 +110,7 @@ class Evaluator:
         board_pocket_ref = _eval(self.rank_table, board_ref, pocket)
 
         wins = 0
+        draws = 0
         total = 0
         for unseen_board in combinations(unseen_deck, 5-len(board)):
             if len(unseen_board) == 0:
@@ -134,15 +129,17 @@ class Evaluator:
                 )
                 if our_strength > opp_strength:
                     wins += 1
+                elif our_strength == opp_strength:
+                    draws += 1
                 total += 1
-        return wins/total
+        return wins/total, draws/total
 
     def check_odds_monte_carlo(self, pocket: List[Card], board: List[Card], n_samples: int):
         unseen_deck = tuple(card.idx for card in self.deck if card not in pocket + board)
         pocket = tuple(card.idx for card in pocket)
         board = tuple(card.idx for card in board)
-
         wins = 0
+        draws = 0
         total = 0
         for _ in range(n_samples):
             board_opp_cards = tuple(sample(unseen_deck, 5-len(board)+2))
@@ -153,39 +150,41 @@ class Evaluator:
             opp_strength = _eval(self.rank_table, 53, full_board + opp_cards)
             if our_strength > opp_strength:
                 wins += 1
+            elif our_strength == opp_strength:
+                draws += 1
             total += 1
-        return wins/total
+        return wins/total, draws/total
 
     def check_odds_preflop(self, pocket: List[Card]):
-        return self.preflop_table[pocket[0].idx, pocket[1].idx]
+        return tuple(self.preflop_table[pocket[0].idx, pocket[1].idx])
 
-    def check_odds(self, pocket: List[Card], board: List[Card], n_samples: int=10000):
+    def check_odds(self, pocket: List[Card], board: List[Card], n_samples: int=None):
         if len(board) == 0 and self.preflop_table is not None:
             return self.check_odds_preflop(pocket)
         if len(board) >= 4:
             return self.check_odds_exact(pocket, board)
         return self.check_odds_monte_carlo(pocket, board, n_samples)
 
-    def full_evaluation(self, pocket_str, board_str, n_samples=100_000):
+    def full_evaluation(self, pocket_str: str, board_str: str, n_samples: int=None):
         pocket = str_to_cards(pocket_str)
         board = str_to_cards(board_str)
         if board == []:
-            return None, None, self.check_odds(pocket, [])
+            return None, None, *self.check_odds(pocket, [])
         rank = self.eval(pocket + board)
         checker = self.get_checker(pocket, board)
-        odds = self.check_odds(pocket, board, n_samples)
-        return rank, checker, odds
+        prob_win, prob_draw = self.check_odds(pocket, board, n_samples)
+        return rank, checker, prob_win, prob_draw
 
 
 def run_preflop(evaluator, pocket):
-    _, _, odds = evaluator.full_evaluation(pocket, "")
-    print(f"Odds : {odds*100:.2f} %\n")
+    _, _, prob_win, prob_draw = evaluator.full_evaluation(pocket, "")
+    print(f"Prob win : {prob_win*100:.2f}%, Prob draw : {prob_draw*100:.2f}%\n")
 
 
 def run_after_flop(evaluator, cards, n_samples):
-    rank, checker, odds = evaluator.full_evaluation(pocket, cards, n_samples)
+    rank, checker, prob_win, prob_draw = evaluator.full_evaluation(pocket, cards, n_samples)
     rank_str = evaluator.rank_to_str(rank)
-    print(f"Rank : {rank_str} ({rank}),  Checker : {checker:.2f},  Odds : {odds*100:.2f} %\n")
+    print(f"Rank : {rank_str} ({rank}),  Checker : {checker:.2f},  Prob win : {prob_win*100:.2f}%, Prob draw : {prob_draw*100:.2f}%\n")
 
 
 def run(pocket='', flop='', turn='', river='', n_samples=20000):
@@ -215,8 +214,8 @@ def run(pocket='', flop='', turn='', river='', n_samples=20000):
 
 
 if __name__ == '__main__':
-    pocket = 'ad8h'
-    flop = '4cth2d'
-    turn = 'as'
-    river = ''
+    pocket = '2sqs'
+    flop = 'kdjdjh'
+    turn = 'js'
+    river = 'jc'
     run(pocket, flop, turn, river)

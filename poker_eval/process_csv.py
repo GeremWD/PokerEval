@@ -7,8 +7,9 @@ from multiprocessing import Process, Queue
 
 
 def process_stage(evaluator: Evaluator, pocket_str: str, board_str: str, row, stage, n_samples):
-    rank, checker, odds = evaluator.full_evaluation(pocket_str, board_str, n_samples)
-    row['proba_' + stage] = odds
+    rank, checker, prob_win, prob_draw = evaluator.full_evaluation(pocket_str, board_str, n_samples)
+    row['proba_win_' + stage] = prob_win
+    row['proba_draw_' + stage] = prob_draw
     if stage != 'preflop':
         rank_str = evaluator.rank_to_str(rank)
         row['best_hand_' + stage] = rank_str
@@ -38,9 +39,10 @@ def process_thread(rows, start_row_idx, queue, n_samples):
 def process_csv(csv_path, output_path, n_samples = 20_000, n_workers = 8):
     df = pd.read_csv(csv_path, sep=';')
     df = df.fillna('')
-    df['proba_preflop'] = np.nan
+    df['proba_win_preflop'] = np.nan
+    df['proba_draw_preflop'] = np.nan
     for stage in ('flop', 'turn', 'river'):
-        for col in ('best_hand', 'checker', 'proba'):
+        for col in ('best_hand', 'checker', 'proba_win', 'proba_draw'):
             df[col + '_' + stage] = np.nan
 
     rows = [row for _, row in df.iterrows()]

@@ -2,7 +2,7 @@
 from poker_eval import Evaluator, Card, suits, values
 import numpy as np
 
-preflop_table = np.zeros((52, 52), dtype=float)
+preflop_table = np.zeros((52, 52, 2), dtype=float)
 evaluator = Evaluator(preflop_table=False)
 
 n_samples = 100_000
@@ -29,7 +29,7 @@ for value_idx_1 in range(13):
                     odds = same_color_odds
                 else:
                     odds = diff_color_odds
-                preflop_table[card1.idx, card2.idx] = odds
-                preflop_table[card2.idx, card1.idx] = odds
+                preflop_table[card1.idx, card2.idx] = np.array(odds)
+                preflop_table[card2.idx, card1.idx] = np.array(odds)
 
 np.save('preflop_table.npy', preflop_table)
