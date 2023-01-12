@@ -169,7 +169,8 @@ class Evaluator:
         pocket = str_to_cards(pocket_str)
         board = str_to_cards(board_str)
         if board == []:
-            return None, None, *self.check_odds(pocket, [])
+            prob_win, prob_draw = self.check_odds(pocket, [])
+            return None, None, prob_win, prob_draw
         rank = self.eval(pocket + board)
         checker = self.get_checker(pocket, board)
         prob_win, prob_draw = self.check_odds(pocket, board, n_samples)
