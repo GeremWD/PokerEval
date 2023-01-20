@@ -93,7 +93,7 @@ def _eval(rank_table: np.ndarray, ref: int, cards: Tuple[int], premature_rank: b
 
 
 class Evaluator:
-    def __init__(self):
+    def __init__(self, precomputed=False):
         rank_table_filename = os.path.join(os.path.dirname(__file__), "rank_table.bin")
         rank_table_file = open(rank_table_filename, "r")
         self.rank_table = np.fromfile(rank_table_file, dtype=np.int32)
@@ -110,11 +110,14 @@ class Evaluator:
         }
         self.deck = [Card(i) for i in range(52)]
         preflop_table_filename = os.path.join(os.path.dirname(__file__), "preflop_table.npy")
-        flop_table_filename = os.path.join(os.path.dirname(__file__), "flop_table.pkl")
-        turn_table_filename = os.path.join(os.path.dirname(__file__), "turn_table.pkl")
         self.preflop_table = np.load(preflop_table_filename)
-        self.flop_table = pickle.load(open(flop_table_filename, 'rb'))
-        self.turn_table = pickle.load(open(turn_table_filename, 'rb'))
+
+        self.precomputed = precomputed
+        if precomputed:
+            flop_table_filename = os.path.join(os.path.dirname(__file__), "flop_table.pkl")
+            turn_table_filename = os.path.join(os.path.dirname(__file__), "turn_table.pkl")
+            self.flop_table = pickle.load(open(flop_table_filename, 'rb'))
+            self.turn_table = pickle.load(open(turn_table_filename, 'rb'))
 
     
     def eval(self, cards: Iterable[int]):
@@ -202,10 +205,16 @@ class Evaluator:
         return wins/total, draws/total
 
     def check_odds_flop(self, pocket: List[Card], board: List[Card]):
-        return self.flop_table[get_generic_id(pocket + board)]
+        if self.precomputed:
+            return self.flop_table[get_generic_id(pocket + board)]
+        else:
+            return self.check_odds_monte_carlo(pocket, board, 20000)
 
     def check_odds_turn(self, pocket: List[Card], board: List[Card]):
-        return self.turn_table[get_generic_id(pocket + board)]
+        if self.precomputed:
+            return self.turn_table[get_generic_id(pocket + board)]
+        else:
+            return self.check_odds_exact(pocket, board)
 
     def check_odds_preflop(self, pocket: List[Card]):
         return tuple(self.preflop_table[pocket[0].idx, pocket[1].idx])

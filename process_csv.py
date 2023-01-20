@@ -34,7 +34,7 @@ def process_csv(csv_path, output_path):
         for col in ('best_hand', 'checker', 'proba_win', 'proba_draw'):
             df[col + '_' + stage] = np.nan
 
-    evaluator = Evaluator()
+    evaluator = Evaluator(precomputed=True)
     start = time.time()
     n_processed = 0
     for idx, row in df.iterrows():
