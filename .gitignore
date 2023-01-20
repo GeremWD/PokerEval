@@ -1,2 +1,5 @@
 __pycache__/
+extra/
 rank_table.bin
+flop_table.pkl
+turn_table.pkl
