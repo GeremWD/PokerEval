@@ -6,7 +6,7 @@ To evaluate one situation, i.e. obtain the hand rank, the checker and the odds :
 ```py
 import poker_eval
 evaluator = poker_eval.Evaluator()
-rank, checker, odds = evaluator.full_evaluation(pocket='ad8h', board='4cth2d', n_samples=20000)
+rank, checker, odds = evaluator.full_evaluation(pocket='ad8h', board='4cth2d')
 ```
 
 If the board is empty (preflop), rank and checker will be None.
@@ -29,13 +29,9 @@ The result belongs to
 To process an entire csv file :
 
 ```py
-import poker_eval
-
-if __name__ == '__main__': # Important guard to prevent some multiprocessing issues
-    poker_eval.process_csv(
-        csv_path="input.csv",
-        output_path="output.csv",
-        n_samples=20000,
-        n_workers=8
-    )
+import process_csv
+process_csv.process_csv(
+    csv_path="input.csv",
+    output_path="output.csv"
+)
 ```
