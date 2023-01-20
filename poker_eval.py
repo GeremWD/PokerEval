@@ -6,7 +6,7 @@ from numba import njit
 import numpy as np
 from copy import deepcopy
 import os
-import argparse
+import pickle
 
 
 suits = ['s','d','h','c']
@@ -21,8 +21,15 @@ class Card:
     def from_str(cls, s):
         return Card(values.index(s[0]) * 4 + suits.index(s[1]))
 
+    @classmethod
+    def from_value_suit(cls, value, suit):
+        return Card(value*4+suit)
+
     def __str__(self):
         return values[self.idx // 4] + suits[self.idx % 4]
+
+    def __repr__(self):
+        return self.__str__()
 
     def __eq__(self, other):
         return self.idx == other.idx
@@ -30,9 +37,49 @@ class Card:
     def value(self):
         return self.idx//4
 
+    def suit(self):
+        return self.idx%4
+
 
 def str_to_cards(s: str):
     return [Card.from_str(s[i:i+2]) for i in range(0, len(s), 2)]
+
+
+def cards_to_str(cards):
+    s = ""
+    for card in cards:
+        s += str(card)
+    return s
+
+
+def get_generic_cards(cards, mapping):
+    cards = sorted(cards, key=lambda card : card.idx)
+    for i, card in enumerate(cards):
+        if card.suit() not in mapping:
+            mapping[card.suit()] = len(mapping)
+        cards[i] = Card.from_value_suit(card.value(), mapping[card.suit()])
+    return cards
+            
+
+def get_generic_hand(hand):
+    hand = deepcopy(hand)
+    mapping = {}
+    group_sizes = [2, len(hand)-2]
+    new_hand = []
+    for group_size in group_sizes:
+        if len(new_hand) + group_size > len(hand):
+            break
+        new_hand += get_generic_cards(hand[len(new_hand):len(new_hand)+group_size], mapping)
+    return new_hand
+
+
+def get_generic_id(hand):
+    generic_hand = get_generic_hand(hand)
+    id = 0
+    for card in generic_hand:
+        id *= 52
+        id += card.idx
+    return id
 
 
 @njit
@@ -44,8 +91,9 @@ def _eval(rank_table: np.ndarray, ref: int, cards: Tuple[int], premature_rank: b
         p = rank_table[p]
     return p
 
+
 class Evaluator:
-    def __init__(self, preflop_table=True):
+    def __init__(self):
         rank_table_filename = os.path.join(os.path.dirname(__file__), "rank_table.bin")
         rank_table_file = open(rank_table_filename, "r")
         self.rank_table = np.fromfile(rank_table_file, dtype=np.int32)
@@ -61,11 +109,13 @@ class Evaluator:
             9: 'STRAIGHT_FLUSH'  
         }
         self.deck = [Card(i) for i in range(52)]
-        if preflop_table:
-            preflop_table_filename = os.path.join(os.path.dirname(__file__), "preflop_table.npy")
-            self.preflop_table = np.load(preflop_table_filename)
-        else:
-            self.preflop_table = None
+        preflop_table_filename = os.path.join(os.path.dirname(__file__), "preflop_table.npy")
+        flop_table_filename = os.path.join(os.path.dirname(__file__), "flop_table.pkl")
+        turn_table_filename = os.path.join(os.path.dirname(__file__), "turn_table.pkl")
+        self.preflop_table = np.load(preflop_table_filename)
+        self.flop_table = pickle.load(open(flop_table_filename, 'rb'))
+        self.turn_table = pickle.load(open(turn_table_filename, 'rb'))
+
     
     def eval(self, cards: Iterable[int]):
         cards = tuple(card.idx for card in cards)
@@ -98,7 +148,7 @@ class Evaluator:
         return self.rank_to_str_dict[rank >> 12]
 
     def check_odds_exact(self, pocket: List[Card], board: List[Card]):
-        unseen_deck = tuple(card.idx for card in self.deck if card not in pocket + board)
+        unseen_deck = tuple(card.idx for card in self.deck if card not in (pocket + board))
         pocket = tuple(card.idx for card in pocket)
         board = tuple(card.idx for card in board)
         
@@ -117,16 +167,12 @@ class Evaluator:
                 our_strength = board_pocket_ref
                 full_board_ref = board_ref
             else:
-                our_strength = _eval(self.rank_table, board_pocket_ref, unseen_board, 
-                    premature_rank=(len(board) < 5)
-                )
+                our_strength = _eval(self.rank_table, board_pocket_ref, unseen_board)
                 full_board_ref = _eval(self.rank_table, board_ref, unseen_board)
 
             undrawn_deck = tuple(card for card in unseen_deck if card not in unseen_board)
             for opp_cards in combinations(undrawn_deck, 2):
-                opp_strength = _eval(self.rank_table, full_board_ref, opp_cards,
-                    premature_rank=(len(board) < 5)
-                )
+                opp_strength = _eval(self.rank_table, full_board_ref, opp_cards)
                 if our_strength > opp_strength:
                     wins += 1
                 elif our_strength == opp_strength:
@@ -155,17 +201,27 @@ class Evaluator:
             total += 1
         return wins/total, draws/total
 
+    def check_odds_flop(self, pocket: List[Card], board: List[Card]):
+        return self.flop_table[get_generic_id(pocket + board)]
+
+    def check_odds_turn(self, pocket: List[Card], board: List[Card]):
+        return self.turn_table[get_generic_id(pocket + board)]
+
     def check_odds_preflop(self, pocket: List[Card]):
         return tuple(self.preflop_table[pocket[0].idx, pocket[1].idx])
 
-    def check_odds(self, pocket: List[Card], board: List[Card], n_samples: int=None):
-        if len(board) == 0 and self.preflop_table is not None:
+    def check_odds(self, pocket: List[Card], board: List[Card]):
+        if len(board) == 0:
             return self.check_odds_preflop(pocket)
-        if len(board) >= 4:
+        if len(board) == 3:
+            return self.check_odds_flop(pocket, board)
+        if len(board) == 4:
+            return self.check_odds_turn(pocket, board)
+        if len(board) == 5:
             return self.check_odds_exact(pocket, board)
-        return self.check_odds_monte_carlo(pocket, board, n_samples)
+        raise RuntimeError("invalid board size")
 
-    def full_evaluation(self, pocket_str: str, board_str: str, n_samples: int=None):
+    def full_evaluation(self, pocket_str: str, board_str: str):
         pocket = str_to_cards(pocket_str)
         board = str_to_cards(board_str)
         if board == []:
@@ -173,7 +229,7 @@ class Evaluator:
             return None, None, prob_win, prob_draw
         rank = self.eval(pocket + board)
         checker = self.get_checker(pocket, board)
-        prob_win, prob_draw = self.check_odds(pocket, board, n_samples)
+        prob_win, prob_draw = self.check_odds(pocket, board)
         return rank, checker, prob_win, prob_draw
 
 
@@ -182,13 +238,13 @@ def run_preflop(evaluator, pocket):
     print(f"Prob win : {prob_win*100:.2f}%, Prob draw : {prob_draw*100:.2f}%\n")
 
 
-def run_after_flop(evaluator, cards, n_samples):
-    rank, checker, prob_win, prob_draw = evaluator.full_evaluation(pocket, cards, n_samples)
+def run_after_flop(evaluator, cards):
+    rank, checker, prob_win, prob_draw = evaluator.full_evaluation(pocket, cards)
     rank_str = evaluator.rank_to_str(rank)
     print(f"Rank : {rank_str} ({rank}),  Checker : {checker:.2f},  Prob win : {prob_win*100:.2f}%, Prob draw : {prob_draw*100:.2f}%\n")
 
 
-def run(pocket='', flop='', turn='', river='', n_samples=20000):
+def run(pocket='', flop='', turn='', river=''):
     evaluator = Evaluator()
 
     print("")
@@ -201,17 +257,17 @@ def run(pocket='', flop='', turn='', river='', n_samples=20000):
     if flop == '':
         return
     print("Flop")
-    run_after_flop(evaluator, flop, n_samples)
+    run_after_flop(evaluator, flop)
 
     if turn == '':
         return
     print("Turn")
-    run_after_flop(evaluator, flop + turn, n_samples)
+    run_after_flop(evaluator, flop + turn)
 
     if river == '':
         return
     print("River")
-    run_after_flop(evaluator, flop + turn + river, n_samples)
+    run_after_flop(evaluator, flop + turn + river)
 
 
 if __name__ == '__main__':
