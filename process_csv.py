@@ -25,8 +25,8 @@ def process_row(evaluator: Evaluator, row):
         return
     process_stage(evaluator, row['Pocket'], row['Table'] + row['Turn'] + row['River'], row, 'river')
 
-def process_csv(csv_path, output_path):
-    df = pd.read_csv(csv_path, sep=';')
+def process_csv(csv_path, output_path, sep=';'):
+    df = pd.read_csv(csv_path, sep=sep)
     df = df.fillna('')
     df['proba_win_preflop'] = np.nan
     df['proba_draw_preflop'] = np.nan
@@ -45,7 +45,7 @@ def process_csv(csv_path, output_path):
             end = time.time()
             print(f"  Time spent : {end - start:.1f} seconds | Rows processed : {n_processed}", end='\r')
     print('')
-    df.to_csv(output_path, sep=';', index=False)
+    df.to_csv(output_path, sep=sep, index=False)
 
 
 if __name__=='__main__':

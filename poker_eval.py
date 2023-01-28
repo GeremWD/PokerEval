@@ -45,10 +45,32 @@ def str_to_cards(s: str):
     return [Card.from_str(s[i:i+2]) for i in range(0, len(s), 2)]
 
 
+def str_to_cards_bis(s: str):
+    value_str = ""
+    cards = []
+    for c in s:
+        if c in suits:
+            value = int(value_str) - 2
+            suit = suits.index(c)
+            cards.append(Card.from_value_suit(value, suit))
+            value_str = ""
+        else:
+            value_str += c
+    return cards
+
+
 def cards_to_str(cards):
     s = ""
     for card in cards:
         s += str(card)
+    return s
+
+def cards_to_str_bis(cards):
+    s = ""
+    for card in cards:
+        value_str = str(card.value()+2)
+        suit_str = suits[card.suit()]
+        s += value_str + suit_str
     return s
 
 
@@ -61,10 +83,11 @@ def get_generic_cards(cards, mapping):
     return cards
             
 
-def get_generic_hand(hand):
+def get_generic_hand(hand, group_sizes=None):
     hand = deepcopy(hand)
     mapping = {}
-    group_sizes = [2, len(hand)-2]
+    if group_sizes is None:
+        group_sizes = [2, len(hand)-2]
     new_hand = []
     for group_size in group_sizes:
         if len(new_hand) + group_size > len(hand):
@@ -72,14 +95,15 @@ def get_generic_hand(hand):
         new_hand += get_generic_cards(hand[len(new_hand):len(new_hand)+group_size], mapping)
     return new_hand
 
-
-def get_generic_id(hand):
-    generic_hand = get_generic_hand(hand)
+def get_hand_id(hand):
     id = 0
-    for card in generic_hand:
+    for card in hand:
         id *= 52
         id += card.idx
     return id
+
+def get_generic_id(hand, group_sizes=None):
+    return get_hand_id(get_generic_hand(hand, group_sizes))
 
 
 @njit
@@ -230,9 +254,13 @@ class Evaluator:
             return self.check_odds_exact(pocket, board)
         raise RuntimeError("invalid board size")
 
-    def full_evaluation(self, pocket_str: str, board_str: str):
-        pocket = str_to_cards(pocket_str)
-        board = str_to_cards(board_str)
+    def full_evaluation(self, pocket_str: str, board_str: str, bis_formatting=False):
+        if not bis_formatting:
+            pocket = str_to_cards(pocket_str)
+            board = str_to_cards(board_str)
+        else:
+            pocket = str_to_cards_bis(pocket_str)
+            board = str_to_cards_bis(board_str)
         if board == []:
             prob_win, prob_draw = self.check_odds(pocket, [])
             return None, None, prob_win, prob_draw
