@@ -150,7 +150,7 @@ def run(csvpath, output_generic, output_filtered, output_with_probs):
 
 if __name__ == '__main__':
     run(
-        input='dbg_260123.csv', 
+        csvpath='dbg_260123.csv', 
         output_generic='dbg_260123_generic.csv',
         output_filtered='dbg_260123_filtered.csv',
         output_with_probs='dbg_260123_filtered_with_probs.csv'
