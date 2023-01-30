@@ -140,11 +140,11 @@ def filter_csv(filename, output, chunksize):
 
 def run(csvpath, output_generic, output_filtered, output_with_probs):
     print("Generic hands processing")
-    process_csv(csvpath, 'dataset-processed.csv', process_chunk_generic, n_workers=8, chunksize=100000)
+    process_csv(csvpath, output_generic, process_chunk_generic, n_workers=8, chunksize=100000)
     print("Filtering duplicates")
-    filter_csv('dataset-processed.csv', 'dataset-filtered.csv', chunksize=1000000)
+    filter_csv(output_generic, output_filtered, chunksize=1000000)
     print("Odds processing")
-    process_csv('dataset-filtered.csv', output, process_chunk_proba, n_workers=2, chunksize=100000)
+    process_csv(output_filtered, output_with_probs, process_chunk_proba, n_workers=2, chunksize=100000)
     #os.remove(output_generic)
     #os.remove(output_filtered) 
 
