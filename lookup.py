@@ -15,4 +15,4 @@ if __name__ == '__main__':
     flop = '6c12s10h'
     turn = ''
     river = ''
-    run(pocket, flop, turn, river, dbpath='dbg_260123_processed.csv')
+    run(pocket, flop, turn, river, dbpath='dbg_260123_filtered_with_probs.csv')

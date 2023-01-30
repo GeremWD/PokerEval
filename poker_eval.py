@@ -95,6 +95,13 @@ def get_generic_hand(hand, group_sizes=None):
         new_hand += get_generic_cards(hand[len(new_hand):len(new_hand)+group_size], mapping)
     return new_hand
 
+def get_hand_id_table(hand):
+    id = 0
+    for card in hand:
+        id *= 52
+        id += card.idx
+    return id
+
 def get_hand_id(hand):
     id = 0
     for i in range(7):
@@ -102,6 +109,9 @@ def get_hand_id(hand):
         if i < len(hand):
             id += hand[i].idx+1
     return id
+
+def get_generic_id_table(hand, group_sizes=None):
+    return get_hand_id_table(get_generic_hand(hand, group_sizes))
 
 def get_generic_id(hand, group_sizes=None):
     return get_hand_id(get_generic_hand(hand, group_sizes))
@@ -231,13 +241,13 @@ class Evaluator:
 
     def check_odds_flop(self, pocket: List[Card], board: List[Card]):
         if self.precomputed:
-            return self.flop_table[get_generic_id(pocket + board)]
+            return self.flop_table[get_generic_id_table(pocket + board)]
         else:
             return self.check_odds_monte_carlo(pocket, board, 20000)
 
     def check_odds_turn(self, pocket: List[Card], board: List[Card]):
         if self.precomputed:
-            return self.turn_table[get_generic_id(pocket + board)]
+            return self.turn_table[get_generic_id_table(pocket + board)]
         else:
             return self.check_odds_exact(pocket, board)
 
