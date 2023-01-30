@@ -97,9 +97,10 @@ def get_generic_hand(hand, group_sizes=None):
 
 def get_hand_id(hand):
     id = 0
-    for card in hand:
-        id *= 52
-        id += card.idx
+    for i in range(7):
+        id *= 53
+        if i < len(hand):
+            id += hand[i].idx+1
     return id
 
 def get_generic_id(hand, group_sizes=None):

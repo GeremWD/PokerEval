@@ -109,13 +109,10 @@ def process_parallel_chunk(df_iterator, output, first, n_workers, process_func) 
 
 def process_csv(filename, output, process_chunk_func, n_workers, chunksize):
     df_iterator = pd.read_csv(filename, keep_default_na=False, chunksize=chunksize, iterator=True)
-    # for i in range(21):
-    #     print(i)
-    #     next(df_iterator)
     n_processed = 0
     while not process_parallel_chunk(df_iterator, output, n_processed==0, n_workers, process_chunk_func):
         n_processed += n_workers*chunksize
-        print('{:,}'.format(n_processed), end='\r')
+        print('\r{:,}'.format(n_processed), end='')
     print("")
 
 
@@ -134,22 +131,27 @@ def filter_csv(filename, output, chunksize):
         else:
             result.to_csv(output, index=False, mode='a', header=False)
         n_processed += chunksize
-        print('{:,}'.format(n_processed), end='\r')
+        print('\r{:,}'.format(n_processed), end='')
     print("")
     df = pd.read_csv(output, keep_default_na=False)
     df = filter_df(df)
     df.to_csv(output, index=False)
     
 
-def run(csvpath, output):
+def run(csvpath, output_generic, output_filtered, output_with_probs):
     print("Generic hands processing")
     process_csv(csvpath, 'dataset-processed.csv', process_chunk_generic, n_workers=8, chunksize=100000)
     print("Filtering duplicates")
     filter_csv('dataset-processed.csv', 'dataset-filtered.csv', chunksize=1000000)
     print("Odds processing")
     process_csv('dataset-filtered.csv', output, process_chunk_proba, n_workers=2, chunksize=100000)
-    os.remove('dataset-processed.csv')
-    os.remove('dataset-filtered.csv') 
+    #os.remove(output_generic)
+    #os.remove(output_filtered) 
 
 if __name__ == '__main__':
-    run('dbg_260123.csv', 'dbg_260123_processed.csv')
+    run(
+        input='dbg_260123.csv', 
+        output_generic='dbg_260123_generic.csv',
+        output_filtered='dbg_260123_filtered.csv',
+        output_with_probs='dbg_260123_filtered_with_probs.csv'
+        )
