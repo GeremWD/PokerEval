@@ -110,11 +110,11 @@ def get_hand_id(hand):
             id += hand[i].idx+1
     return id
 
-def get_generic_id_table(hand, group_sizes=None):
-    return get_hand_id_table(get_generic_hand(hand, group_sizes))
+def get_generic_id_table(hand):
+    return get_hand_id_table(get_generic_hand(hand, group_sizes=None))
 
-def get_generic_id(hand, group_sizes=None):
-    return get_hand_id(get_generic_hand(hand, group_sizes))
+def get_generic_id(hand):
+    return get_hand_id(get_generic_hand(hand, group_sizes=[2, 3, 1, 1]))
 
 
 @njit
